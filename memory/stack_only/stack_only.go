@@ -1,13 +1,7 @@
 package main
 
 import (
-	"net/http"
-	"time"
-
-	"github.com/prometheus/client_golang/prometheus/collectors"
-
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"fmt"
 )
 
 type Point struct {
@@ -29,10 +23,10 @@ type Game struct {
 	newBoard [BOARD_SIZE][BOARD_SIZE]bool
 }
 
-func (g *Game) NextGeneration() {
+func NextGeneration(g *Game) {
 	for x := range g.board {
 		for y := range g.board[x] {
-			neibought := g.numLiveNeiboughts(Point{x: x, y: y})
+			neibought := newLiveNeighbors(g, Point{x: x, y: y})
 			if g.board[x][y] && (neibought == 2 || neibought == 3) {
 				g.newBoard[x][y] = true
 			} else if !g.board[x][y] && neibought == 3 {
@@ -43,10 +37,10 @@ func (g *Game) NextGeneration() {
 		}
 	}
 	g.board = g.newBoard
-	g.cleanNewBoard()
+	cleanNewBoard(g)
 }
 
-func (g *Game) cleanNewBoard() {
+func cleanNewBoard(g *Game) {
 	for x := range g.newBoard {
 		for y := range g.newBoard[x] {
 			g.newBoard[x][y] = false
@@ -54,36 +48,23 @@ func (g *Game) cleanNewBoard() {
 	}
 }
 
-func (g *Game) numLiveNeiboughts(p Point) int {
+func newLiveNeighbors(g *Game, p Point) int {
 	num := 0
-	if p.x > 0 && g.board[p.x-1][p.y] {
-		num++
-	}
-	if p.x < 29 && g.board[p.x+1][p.y] {
-		num++
-	}
-	if p.y > 0 && g.board[p.x][p.y-1] {
-		num++
-	}
-	if p.y < 29 && g.board[p.x][p.y+1] {
-		num++
-	}
-	if p.x > 0 && p.y > 0 && g.board[p.x-1][p.y-1] {
-		num++
-	}
-	if p.x < 29 && p.y > 0 && g.board[p.x+1][p.y-1] {
-		num++
-	}
-	if p.x > 0 && p.y < 29 && g.board[p.x-1][p.y+1] {
-		num++
-	}
-	if p.y < 29 && p.x < 29 && g.board[p.x+1][p.y+1] {
-		num++
+	for dx := -1; dx <= 1; dx++ {
+		for dy := -1; dy <= 1; dy++ {
+			if dx == 0 && dy == 0 {
+				continue
+			}
+			x := (p.x + dx + BOARD_SIZE) % BOARD_SIZE
+			y := (p.y + dy + BOARD_SIZE) % BOARD_SIZE
+			if g.board[x][y] {
+				num++
+			}
+		}
 	}
 	return num
 }
 
-/**
 func PrintBoard(g *Game) {
 	fmt.Print("\033[H")
 	for x := range g.board {
@@ -97,15 +78,8 @@ func PrintBoard(g *Game) {
 		fmt.Println()
 	}
 }
-*/
 
 func main() {
-	reg := prometheus.NewRegistry()
-	reg.MustRegister(
-		collectors.NewGoCollector(),
-		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
-	)
-
 	life := NewGame(
 		Point{x: 0, y: 1},
 		Point{x: 1, y: 1},
@@ -114,15 +88,7 @@ func main() {
 		Point{x: 2, y: 1},
 	)
 
-	go func() {
-		for {
-			//PrintBoard(&life)
-			life.NextGeneration()
-
-			time.Sleep(1 * time.Second)
-		}
-	}()
-
-	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg}))
-	http.ListenAndServe(":8080", nil)
+	for range 1000000 {
+		NextGeneration(&life)
+	}
 }
