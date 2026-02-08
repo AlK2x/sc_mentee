@@ -2,6 +2,9 @@ package main
 
 import (
 	"crypto/rand"
+	"net/http"
+
+	_ "net/http/pprof"
 )
 
 func NewLargeObject(size int) *LargeObject {
@@ -59,4 +62,6 @@ func main() {
 		updData := obj.DataUpdaterFunc(byte(0))
 		updData()
 	}
+
+	http.ListenAndServe("localhost:6060", nil)
 }

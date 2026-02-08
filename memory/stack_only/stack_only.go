@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+
+	"net/http"
+	_ "net/http/pprof"
 )
 
 type Point struct {
@@ -80,6 +83,10 @@ func PrintBoard(g *Game) {
 }
 
 func main() {
+	go func() {
+		http.ListenAndServe("localhost:6060", nil)
+	}()
+
 	life := NewGame(
 		Point{x: 0, y: 1},
 		Point{x: 1, y: 1},
