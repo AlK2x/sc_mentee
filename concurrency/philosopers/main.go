@@ -23,10 +23,11 @@ func (t *Table) TakeLeftFork(seat int) bool {
 	if seat < 0 || seat >= 5 {
 		return false
 	}
-	t.fMutex[seat].Lock()
-	defer t.fMutex[seat].Unlock()
-	if t.forks[seat] {
-		t.forks[seat] = false
+	forkNum := seat
+	t.fMutex[forkNum].Lock()
+	defer t.fMutex[forkNum].Unlock()
+	if t.forks[forkNum] {
+		t.forks[forkNum] = false
 		return true
 	}
 	return false
@@ -37,11 +38,11 @@ func (t *Table) TakeRightFork(seat int) bool {
 		return false
 	}
 
-	s := (seat + 1) % 5
-	t.fMutex[s].Lock()
-	defer t.fMutex[s].Unlock()
-	if t.forks[s] {
-		t.forks[s] = false
+	forkNum := (seat + 1) % 5
+	t.fMutex[forkNum].Lock()
+	defer t.fMutex[forkNum].Unlock()
+	if t.forks[forkNum] {
+		t.forks[forkNum] = false
 		return true
 	}
 	return false
@@ -111,8 +112,8 @@ func (p *Philosopher) thinking() {
 
 func (p *Philosopher) doAction() {
 	//p.printAction()
-	sleep := rand.UintN(100)
-	time.Sleep(time.Microsecond * time.Duration(sleep))
+	sleep := rand.UintN(10)
+	time.Sleep(time.Millisecond * time.Duration(sleep))
 }
 
 func (p *Philosopher) CountEating() int {

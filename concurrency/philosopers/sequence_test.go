@@ -42,7 +42,7 @@ func TestPhilosoperProblem(t *testing.T) {
 			},
 		},
 		{
-			name: "Central coordinator",
+			name: "Central Coordinator",
 			runPhilosopers: func(table *Table) [5]*Philosopher {
 				ps := [5]*Philosopher{}
 				servant := &Servant{table: table}
@@ -50,6 +50,21 @@ func TestPhilosoperProblem(t *testing.T) {
 					p := Philosopher{
 						seat:                i,
 						forksAccessStrategy: &CentralCoordinator{servant: servant},
+					}
+					p.Start()
+					ps[i] = &p
+				}
+				return ps
+			},
+		},
+		{
+			name: "Non Blocking",
+			runPhilosopers: func(table *Table) [5]*Philosopher {
+				ps := [5]*Philosopher{}
+				for i := range len(ps) {
+					p := Philosopher{
+						seat:                i,
+						forksAccessStrategy: &NonBlockStrategy{table: table},
 					}
 					p.Start()
 					ps[i] = &p
