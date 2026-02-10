@@ -14,13 +14,11 @@ func TestPhilosoperProblem(t *testing.T) {
 			name: "Resource Ordering",
 			runPhilosopers: func(table *Table) [5]*Philosopher {
 				ps := [5]*Philosopher{}
+				strategy := &ResourceOrdering{table}
 				for i := range len(ps) {
-					p := Philosopher{
-						seat:                i,
-						forksAccessStrategy: &ResourceOrdering{table: table},
-					}
+					p := NewPhilosoper(i, strategy)
 					p.Start()
-					ps[i] = &p
+					ps[i] = p
 				}
 				return ps
 			},
@@ -30,13 +28,11 @@ func TestPhilosoperProblem(t *testing.T) {
 			runPhilosopers: func(table *Table) [5]*Philosopher {
 				ps := [5]*Philosopher{}
 				semaphore := NewSemaphore(4)
+				strategy := &RestrictParallelism{table: table, sem: semaphore}
 				for i := range len(ps) {
-					p := Philosopher{
-						seat:                i,
-						forksAccessStrategy: &RestrictParallelism{table: table, sem: semaphore},
-					}
+					p := NewPhilosoper(i, strategy)
 					p.Start()
-					ps[i] = &p
+					ps[i] = p
 				}
 				return ps
 			},
@@ -46,13 +42,11 @@ func TestPhilosoperProblem(t *testing.T) {
 			runPhilosopers: func(table *Table) [5]*Philosopher {
 				ps := [5]*Philosopher{}
 				servant := &Servant{table: table}
+				strategy := &CentralCoordinator{servant: servant}
 				for i := range len(ps) {
-					p := Philosopher{
-						seat:                i,
-						forksAccessStrategy: &CentralCoordinator{servant: servant},
-					}
+					p := NewPhilosoper(i, strategy)
 					p.Start()
-					ps[i] = &p
+					ps[i] = p
 				}
 				return ps
 			},
@@ -61,13 +55,11 @@ func TestPhilosoperProblem(t *testing.T) {
 			name: "Non Blocking",
 			runPhilosopers: func(table *Table) [5]*Philosopher {
 				ps := [5]*Philosopher{}
+				strategy := &NonBlockStrategy{table: table}
 				for i := range len(ps) {
-					p := Philosopher{
-						seat:                i,
-						forksAccessStrategy: &NonBlockStrategy{table: table},
-					}
+					p := NewPhilosoper(i, strategy)
 					p.Start()
-					ps[i] = &p
+					ps[i] = p
 				}
 				return ps
 			},
@@ -84,6 +76,10 @@ func TestPhilosoperProblem(t *testing.T) {
 
 			timer := time.NewTimer(5 * time.Second)
 			<-timer.C
+
+			for i := range ps {
+				ps[i].Stop()
+			}
 			for i := range ps {
 				if ps[i].CountEating() == 0 {
 					t.Fatalf("Starving philosoper %d. Possible deadlock detected\n", ps[i].seat)

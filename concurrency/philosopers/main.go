@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -73,41 +72,60 @@ type TakeForksStrategy interface {
 	OnEatEnding(p *Philosopher)
 }
 
+func NewPhilosoper(seat int, strategy TakeForksStrategy) *Philosopher {
+	return &Philosopher{
+		state:               Thinking,
+		seat:                seat,
+		forksAccessStrategy: strategy,
+		stop:                make(chan struct{}),
+	}
+}
+
 type Philosopher struct {
 	state               PhilosopherState
 	seat                int
 	prevState           PhilosopherState
 	forksAccessStrategy TakeForksStrategy
-	eatCounter          uint32
+	eatCounter          int
+	stop                chan struct{}
 }
 
 func (p *Philosopher) Start() {
 	go p.doStart()
 }
 
+func (p *Philosopher) Stop() {
+	p.stop <- struct{}{}
+}
+
 func (p *Philosopher) doStart() {
 	for {
-		p.thinking()
-		p.takeForks()
-		p.eating()
-		p.forksAccessStrategy.OnEatEnding(p)
+		select {
+		case <-p.stop:
+			return
+		default:
+			p.thinking()
+			p.eating()
+		}
 	}
+}
+
+func (p *Philosopher) eating() {
+	p.takeForks()
+	p.state = Eating
+	p.doAction()
+	p.eatCounter++
+	p.forksAccessStrategy.OnEatEnding(p)
 }
 
 func (p *Philosopher) takeForks() {
 	p.forksAccessStrategy.TakeForks(p)
-	p.state = Eating
-	atomic.AddUint32(&p.eatCounter, 1)
-}
-
-func (p *Philosopher) eating() {
-	p.state = Eating
-	p.doAction()
 }
 
 func (p *Philosopher) thinking() {
 	p.state = Thinking
 	p.doAction()
+	p.state = Starving
 }
 
 func (p *Philosopher) doAction() {
@@ -117,7 +135,7 @@ func (p *Philosopher) doAction() {
 }
 
 func (p *Philosopher) CountEating() int {
-	return int(atomic.LoadUint32(&p.eatCounter))
+	return p.eatCounter
 }
 
 func (p *Philosopher) printAction() {
@@ -133,18 +151,17 @@ func main() {
 	n := 5
 
 	ps := [5]*Philosopher{}
+	strategy := &ResourceOrdering{table}
 	for i := range n {
-		p := Philosopher{
-			seat:                i,
-			forksAccessStrategy: &ResourceOrdering{table: table},
-		}
+		p := NewPhilosoper(i, strategy)
 		p.Start()
-		ps[i] = &p
+		ps[i] = p
 	}
 
 	timer := time.NewTimer(5 * time.Second)
 	<-timer.C
 	for i := range ps {
+		ps[i].Stop()
 		if ps[i].CountEating() == 0 {
 			fmt.Printf("Starving philosoper %d. Possible deadlock detected\n", ps[i].seat)
 		}
