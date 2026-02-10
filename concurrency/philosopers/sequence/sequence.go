@@ -72,25 +72,9 @@ type TakeForksStrategy interface {
 	OnEatEnding(p *Philosopher)
 }
 
-type ResourceOrdering struct {
-}
-
-func (ro *ResourceOrdering) TakeForks(p *Philosopher) {
-	if p.seat == 4 {
-		p.table.TakeRightFork(p.seat)
-		p.table.TakeLeftFork(p.seat)
-	} else {
-		p.table.TakeLeftFork(p.seat)
-		p.table.TakeRightFork(p.seat)
-	}
-}
-
-func (ro *ResourceOrdering) OnEatEnding(p *Philosopher) {}
-
 type Philosopher struct {
 	state               PhilosopherState
 	seat                int
-	table               *Table
 	prevState           PhilosopherState
 	forksAccessStrategy TakeForksStrategy
 	eatCounter          uint32
@@ -103,11 +87,8 @@ func (p *Philosopher) Start() {
 func (p *Philosopher) doStart() {
 	for {
 		p.thinking()
-
 		p.takeForks()
-
 		p.eating()
-		p.table.ReturnForks(p.seat)
 		p.forksAccessStrategy.OnEatEnding(p)
 	}
 }
@@ -130,8 +111,8 @@ func (p *Philosopher) thinking() {
 
 func (p *Philosopher) doAction() {
 	//p.printAction()
-	sleep := rand.UintN(2)
-	time.Sleep(time.Second * time.Duration(sleep))
+	sleep := rand.UintN(100)
+	time.Sleep(time.Microsecond * time.Duration(sleep))
 }
 
 func (p *Philosopher) CountEating() int {
@@ -154,8 +135,7 @@ func main() {
 	for i := range n {
 		p := Philosopher{
 			seat:                i,
-			table:               table,
-			forksAccessStrategy: &ResourceOrdering{},
+			forksAccessStrategy: &ResourceOrdering{table: table},
 		}
 		p.Start()
 		ps[i] = &p

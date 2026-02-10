@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"math/rand/v2"
-	"sync"
 	"time"
 )
 
@@ -88,37 +87,6 @@ func (p *Philosopher) printNewAction() {
 	}
 	p.prevState = p.state
 	fmt.Printf("%d-th philosoper is %s\n", p.seat, p.state)
-}
-
-type Servant struct {
-	m     sync.Mutex
-	table *Table
-}
-
-func (s *Servant) GiveLeftFork(seat int) bool {
-	s.m.Lock()
-	defer s.m.Unlock()
-	if s.table.TakeLeftFork(seat) {
-		if s.table.TakeRightFork(seat) {
-			return true
-		} else {
-			s.table.PlaceFork(seat)
-		}
-	}
-	return false
-}
-
-func (s *Servant) GiveRightFork(seat int) bool {
-	s.m.Lock()
-	defer s.m.Unlock()
-	if s.table.TakeLeftFork(seat) {
-		if s.table.TakeRightFork(seat) {
-			return true
-		} else {
-			s.table.PlaceFork(seat)
-		}
-	}
-	return false
 }
 
 func main() {

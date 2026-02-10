@@ -38,17 +38,19 @@ func NewRestrictedParallelism(sem *Semaphore) RestrictParallelism {
 }
 
 type RestrictParallelism struct {
-	sem *Semaphore
+	table *Table
+	sem   *Semaphore
 }
 
 func (ro *RestrictParallelism) TakeForks(p *Philosopher) {
 	for !ro.sem.TryAcquare() {
 	}
 
-	p.table.TakeLeftFork(p.seat)
-	p.table.TakeRightFork(p.seat)
+	ro.table.TakeLeftFork(p.seat)
+	ro.table.TakeRightFork(p.seat)
 }
 
 func (ro *RestrictParallelism) OnEatEnding(p *Philosopher) {
+	ro.table.ReturnForks(p.seat)
 	ro.sem.Release()
 }

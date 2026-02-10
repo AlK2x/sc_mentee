@@ -7,18 +7,17 @@ import (
 
 func TestPhilosoperProblem(t *testing.T) {
 	cases := []struct {
-		name string
-		fn   func(table *Table) [5]*Philosopher
+		name           string
+		runPhilosopers func(table *Table) [5]*Philosopher
 	}{
 		{
 			name: "Resource Ordering",
-			fn: func(table *Table) [5]*Philosopher {
+			runPhilosopers: func(table *Table) [5]*Philosopher {
 				ps := [5]*Philosopher{}
 				for i := range len(ps) {
 					p := Philosopher{
 						seat:                i,
-						table:               table,
-						forksAccessStrategy: &ResourceOrdering{},
+						forksAccessStrategy: &ResourceOrdering{table: table},
 					}
 					p.Start()
 					ps[i] = &p
@@ -28,14 +27,29 @@ func TestPhilosoperProblem(t *testing.T) {
 		},
 		{
 			name: "Restricted Parallelism",
-			fn: func(table *Table) [5]*Philosopher {
+			runPhilosopers: func(table *Table) [5]*Philosopher {
 				ps := [5]*Philosopher{}
 				semaphore := NewSemaphore(4)
 				for i := range len(ps) {
 					p := Philosopher{
 						seat:                i,
-						table:               table,
-						forksAccessStrategy: &RestrictParallelism{sem: semaphore},
+						forksAccessStrategy: &RestrictParallelism{table: table, sem: semaphore},
+					}
+					p.Start()
+					ps[i] = &p
+				}
+				return ps
+			},
+		},
+		{
+			name: "Central coordinator",
+			runPhilosopers: func(table *Table) [5]*Philosopher {
+				ps := [5]*Philosopher{}
+				servant := &Servant{table: table}
+				for i := range len(ps) {
+					p := Philosopher{
+						seat:                i,
+						forksAccessStrategy: &CentralCoordinator{servant: servant},
 					}
 					p.Start()
 					ps[i] = &p
@@ -51,7 +65,7 @@ func TestPhilosoperProblem(t *testing.T) {
 
 			table := NewTable()
 
-			ps := tc.fn(table)
+			ps := tc.runPhilosopers(table)
 
 			timer := time.NewTimer(5 * time.Second)
 			<-timer.C
