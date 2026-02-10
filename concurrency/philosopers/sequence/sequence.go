@@ -69,6 +69,7 @@ const (
 
 type TakeForksStrategy interface {
 	TakeForks(p *Philosopher)
+	OnEatEnding(p *Philosopher)
 }
 
 type ResourceOrdering struct {
@@ -82,9 +83,9 @@ func (ro *ResourceOrdering) TakeForks(p *Philosopher) {
 		p.table.TakeLeftFork(p.seat)
 		p.table.TakeRightFork(p.seat)
 	}
-	p.state = Eating
-	atomic.AddUint32(&p.eatCounter, 1)
 }
+
+func (ro *ResourceOrdering) OnEatEnding(p *Philosopher) {}
 
 type Philosopher struct {
 	state               PhilosopherState
@@ -96,7 +97,6 @@ type Philosopher struct {
 }
 
 func (p *Philosopher) Start() {
-	p.state = Thinking
 	go p.doStart()
 }
 
@@ -108,11 +108,14 @@ func (p *Philosopher) doStart() {
 
 		p.eating()
 		p.table.ReturnForks(p.seat)
+		p.forksAccessStrategy.OnEatEnding(p)
 	}
 }
 
 func (p *Philosopher) takeForks() {
 	p.forksAccessStrategy.TakeForks(p)
+	p.state = Eating
+	atomic.AddUint32(&p.eatCounter, 1)
 }
 
 func (p *Philosopher) eating() {
@@ -127,8 +130,8 @@ func (p *Philosopher) thinking() {
 
 func (p *Philosopher) doAction() {
 	//p.printAction()
-	sleep := rand.UintN(10)
-	time.Sleep(time.Microsecond * time.Duration(sleep))
+	sleep := rand.UintN(2)
+	time.Sleep(time.Second * time.Duration(sleep))
 }
 
 func (p *Philosopher) CountEating() int {
@@ -161,7 +164,7 @@ func main() {
 	timer := time.NewTimer(5 * time.Second)
 	<-timer.C
 	for i := range ps {
-		if ps[i].CountEating() > 0 {
+		if ps[i].CountEating() == 0 {
 			fmt.Printf("Starving philosoper %d. Possible deadlock detected\n", ps[i].seat)
 		}
 	}
