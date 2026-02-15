@@ -10,17 +10,14 @@ type Servant struct {
 func (s *Servant) TryTakeForks(seat int) bool {
 	s.m.Lock()
 	defer s.m.Unlock()
-	if s.table.TakeLeftFork(seat) {
-		if s.table.TakeRightFork(seat) {
-			return true
-		}
-	}
-	s.table.ReturnForks(seat)
+	s.table.TakeLeftFork(seat)
+	s.table.TakeRightFork(seat)
 	return false
 }
 
 func (s *Servant) ReturnForks(seat int) {
-	s.table.ReturnForks(seat)
+	s.table.ReturnLeftFork(seat)
+	s.table.ReturnRightFork(seat)
 }
 
 type CentralCoordinator struct {
@@ -32,6 +29,6 @@ func (ro *CentralCoordinator) TakeForks(p *Philosopher) {
 	}
 }
 
-func (ro *CentralCoordinator) OnEatEnding(p *Philosopher) {
+func (ro *CentralCoordinator) returnForks(p *Philosopher) {
 	ro.servant.ReturnForks(p.seat)
 }

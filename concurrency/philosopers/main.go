@@ -3,60 +3,55 @@ package main
 import (
 	"fmt"
 	"math/rand/v2"
-	"sync"
+	"sync/atomic"
 	"time"
 )
 
 type Table struct {
-	forks  [5]bool
-	fMutex [5]sync.Mutex
+	fMutex [5]chan struct{}
 }
 
 func NewTable() *Table {
-	return &Table{
-		forks: [5]bool{true, true, true, true, true},
+	t := &Table{}
+	for i := range t.fMutex {
+		t.fMutex[i] = make(chan struct{}, 1)
 	}
+	return t
 }
 
-func (t *Table) TakeLeftFork(seat int) bool {
-	if seat < 0 || seat >= 5 {
-		return false
-	}
+func (t *Table) TakeLeftFork(seat int) {
 	forkNum := seat
-	t.fMutex[forkNum].Lock()
-	defer t.fMutex[forkNum].Unlock()
-	if t.forks[forkNum] {
-		t.forks[forkNum] = false
-		return true
-	}
-	return false
+	t.fMutex[forkNum] <- struct{}{}
 }
 
-func (t *Table) TakeRightFork(seat int) bool {
-	if seat < 0 || seat >= 5 {
-		return false
-	}
-
+func (t *Table) TakeRightFork(seat int) {
 	forkNum := (seat + 1) % 5
-	t.fMutex[forkNum].Lock()
-	defer t.fMutex[forkNum].Unlock()
-	if t.forks[forkNum] {
-		t.forks[forkNum] = false
-		return true
-	}
-	return false
+	t.fMutex[forkNum] <- struct{}{}
 }
 
-func (t *Table) ReturnForks(seat int) {
-	s := (seat + 1) % 5
-	t.fMutex[seat].Lock()
-	t.fMutex[s].Lock()
+func (t *Table) ReturnLeftFork(seat int) {
+	<-t.fMutex[seat]
+}
 
-	t.forks[seat] = true
-	t.forks[s] = true
+func (t *Table) ReturnRightFork(seat int) {
+	<-t.fMutex[(seat+1)%5]
+}
 
-	t.fMutex[s].Unlock()
-	t.fMutex[seat].Unlock()
+func (t *Table) TakeFork(num int) bool {
+	result := make(chan bool)
+	go func() {
+		select {
+		case t.fMutex[num] <- struct{}{}:
+			result <- true
+		default:
+			result <- false
+		}
+	}()
+	return <-result
+}
+
+func (t *Table) ReturnFork(num int) {
+	<-t.fMutex[num]
 }
 
 type PhilosopherState string
@@ -69,7 +64,7 @@ const (
 
 type TakeForksStrategy interface {
 	TakeForks(p *Philosopher)
-	OnEatEnding(p *Philosopher)
+	returnForks(p *Philosopher)
 }
 
 func NewPhilosoper(seat int, strategy TakeForksStrategy) *Philosopher {
@@ -86,7 +81,7 @@ type Philosopher struct {
 	seat                int
 	prevState           PhilosopherState
 	forksAccessStrategy TakeForksStrategy
-	eatCounter          int
+	eatCounter          int32
 	stop                chan struct{}
 }
 
@@ -105,6 +100,7 @@ func (p *Philosopher) doStart() {
 			return
 		default:
 			p.thinking()
+			p.starving()
 			p.eating()
 		}
 	}
@@ -114,8 +110,13 @@ func (p *Philosopher) eating() {
 	p.takeForks()
 	p.state = Eating
 	p.doAction()
-	p.eatCounter++
-	p.forksAccessStrategy.OnEatEnding(p)
+	atomic.AddInt32(&p.eatCounter, 1)
+	p.forksAccessStrategy.returnForks(p)
+}
+
+func (p *Philosopher) starving() {
+	p.state = Starving
+	p.doAction()
 }
 
 func (p *Philosopher) takeForks() {
@@ -125,17 +126,16 @@ func (p *Philosopher) takeForks() {
 func (p *Philosopher) thinking() {
 	p.state = Thinking
 	p.doAction()
-	p.state = Starving
 }
 
 func (p *Philosopher) doAction() {
 	//p.printAction()
-	sleep := rand.UintN(10)
+	sleep := rand.UintN(1000)
 	time.Sleep(time.Millisecond * time.Duration(sleep))
 }
 
 func (p *Philosopher) CountEating() int {
-	return p.eatCounter
+	return int(atomic.LoadInt32(&p.eatCounter))
 }
 
 func (p *Philosopher) printAction() {
@@ -161,7 +161,6 @@ func main() {
 	timer := time.NewTimer(5 * time.Second)
 	<-timer.C
 	for i := range ps {
-		ps[i].Stop()
 		if ps[i].CountEating() == 0 {
 			fmt.Printf("Starving philosoper %d. Possible deadlock detected\n", ps[i].seat)
 		}

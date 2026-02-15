@@ -78,9 +78,6 @@ func TestPhilosoperProblem(t *testing.T) {
 			<-timer.C
 
 			for i := range ps {
-				ps[i].Stop()
-			}
-			for i := range ps {
 				if ps[i].CountEating() == 0 {
 					t.Fatalf("Starving philosoper %d. Possible deadlock detected\n", ps[i].seat)
 				}

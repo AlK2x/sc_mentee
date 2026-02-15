@@ -14,6 +14,7 @@ func (ro *ResourceOrdering) TakeForks(p *Philosopher) {
 	}
 }
 
-func (ro *ResourceOrdering) OnEatEnding(p *Philosopher) {
-	ro.table.ReturnForks(p.seat)
+func (ro *ResourceOrdering) returnForks(p *Philosopher) {
+	ro.table.ReturnRightFork(p.seat)
+	ro.table.ReturnLeftFork(p.seat)
 }

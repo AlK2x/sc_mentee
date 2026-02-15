@@ -50,7 +50,8 @@ func (ro *RestrictParallelism) TakeForks(p *Philosopher) {
 	ro.table.TakeRightFork(p.seat)
 }
 
-func (ro *RestrictParallelism) OnEatEnding(p *Philosopher) {
-	ro.table.ReturnForks(p.seat)
+func (ro *RestrictParallelism) returnForks(p *Philosopher) {
+	ro.table.ReturnLeftFork(p.seat)
+	ro.table.ReturnRightFork(p.seat)
 	ro.sem.Release()
 }
