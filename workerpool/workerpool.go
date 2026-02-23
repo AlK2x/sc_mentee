@@ -8,8 +8,6 @@ func WorkerPool(jobs <-chan int, workers int, process func(int) int) <-chan int 
 	out := make(chan int)
 
 	var wg sync.WaitGroup
-	wg.Add(workers)
-
 	workerFn := func() {
 		defer wg.Done()
 		for job := range jobs {
@@ -17,6 +15,7 @@ func WorkerPool(jobs <-chan int, workers int, process func(int) int) <-chan int 
 		}
 	}
 
+	wg.Add(workers)
 	for range workers {
 		go workerFn()
 	}
