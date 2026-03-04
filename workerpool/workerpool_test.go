@@ -72,7 +72,7 @@ func TestSlowProcessFunction(t *testing.T) {
 
 	out := WorkerPool(jobs, 5, process)
 
-	assertReceiveFromChannel(t, out, expected, 4*time.Second)
+	assertReceiveFromChannel(t, out, expected, 2*time.Second)
 }
 
 func assertReceiveFromChannel(t *testing.T, ch <-chan int, expected []int, timeout time.Duration) {
