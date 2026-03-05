@@ -55,7 +55,9 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">iterator/sliceiterator.go (85.4%)</option>
+				<option value="file0">iterator/filteriterator.go (63.2%)</option>
+				
+				<option value="file1">iterator/sliceiterator.go (87.8%)</option>
 				
 				</select>
 			</div>
@@ -70,6 +72,95 @@
 		<div id="content">
 		
 		<pre class="file" id="file0" style="display: none">package iterator
+
+type FilterIterator[T any] struct {
+        iter     Iterator[T]
+        filterFn func(val T) bool
+        buffer   T
+        buffered bool
+}
+
+func NewFilterIterator[T any](iter Iterator[T], filterFn func(val T) bool) *FilterIterator[T] <span class="cov8" title="1">{
+        return &amp;FilterIterator[T]{
+                iter:     iter,
+                filterFn: filterFn,
+        }
+}</span>
+
+func (fi *FilterIterator[T]) HasNext() bool <span class="cov8" title="1">{
+        if fi.buffered </span><span class="cov0" title="0">{
+                return true
+        }</span>
+
+        <span class="cov8" title="1">for !fi.buffered &amp;&amp; fi.iter.HasNext() </span><span class="cov8" title="1">{
+                val, _ := fi.iter.Next()
+                if !fi.filterFn(val) </span><span class="cov8" title="1">{
+                        fi.buffered = true
+                        fi.buffer = val
+                }</span>
+        }
+        <span class="cov8" title="1">return fi.buffered</span>
+}
+
+func (fi *FilterIterator[T]) HasPrev() bool <span class="cov8" title="1">{
+        if fi.buffered </span><span class="cov0" title="0">{
+                return true
+        }</span>
+
+        <span class="cov8" title="1">for !fi.buffered &amp;&amp; fi.iter.HasPrev() </span><span class="cov8" title="1">{
+                val, _ := fi.iter.Prev()
+                if !fi.filterFn(val) </span><span class="cov8" title="1">{
+                        fi.buffered = true
+                        fi.buffer = val
+                }</span>
+        }
+        <span class="cov8" title="1">return fi.buffered</span>
+}
+
+func (fi *FilterIterator[T]) Next() (T, error) <span class="cov8" title="1">{
+        if fi.buffered </span><span class="cov8" title="1">{
+                fi.buffered = false
+                return fi.buffer, nil
+        }</span>
+
+        <span class="cov0" title="0">for !fi.buffered &amp;&amp; fi.iter.HasNext() </span><span class="cov0" title="0">{
+                val, _ := fi.iter.Next()
+                if !fi.filterFn(val) </span><span class="cov0" title="0">{
+                        return val, nil
+                }</span>
+        }
+        <span class="cov0" title="0">var zero T
+        return zero, ErrEndOfIterator</span>
+
+}
+
+func (fi *FilterIterator[T]) Prev() (T, error) <span class="cov8" title="1">{
+        if fi.buffered </span><span class="cov8" title="1">{
+                fi.buffered = false
+                return fi.buffer, nil
+        }</span>
+
+        <span class="cov0" title="0">for !fi.buffered &amp;&amp; fi.iter.HasPrev() </span><span class="cov0" title="0">{
+                val, _ := fi.iter.Prev()
+                if !fi.filterFn(val) </span><span class="cov0" title="0">{
+                        return val, nil
+                }</span>
+        }
+        <span class="cov0" title="0">var zero T
+        return zero, ErrEndOfIterator</span>
+}
+
+func (fi *FilterIterator[T]) Reset() <span class="cov8" title="1">{
+        fi.iter.Reset()
+        fi.buffered = false
+}</span>
+
+func (fi *FilterIterator[T]) Reverse() <span class="cov8" title="1">{
+        fi.iter.Reverse()
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package iterator
 
 type SliceIterator[T any] struct {
         reverse bool
@@ -159,12 +250,12 @@ func (si *SliceIterator[T]) left() (T, error) <span class="cov8" title="1">{
 }
 
 func (si *SliceIterator[T]) right() (T, error) <span class="cov8" title="1">{
+        var zero T
         if len(si.s) == 0 </span><span class="cov0" title="0">{
-                var zero T
                 return zero, ErrEndOfIterator
         }</span>
         <span class="cov8" title="1">if si.idx == len(si.s) </span><span class="cov0" title="0">{
-                return si.s[si.idx], ErrEndOfIterator
+                return zero, ErrEndOfIterator
         }</span>
 
         <span class="cov8" title="1">result := si.s[si.idx]

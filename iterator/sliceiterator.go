@@ -88,12 +88,12 @@ func (si *SliceIterator[T]) left() (T, error) {
 }
 
 func (si *SliceIterator[T]) right() (T, error) {
+	var zero T
 	if len(si.s) == 0 {
-		var zero T
 		return zero, ErrEndOfIterator
 	}
 	if si.idx == len(si.s) {
-		return si.s[si.idx], ErrEndOfIterator
+		return zero, ErrEndOfIterator
 	}
 
 	result := si.s[si.idx]
