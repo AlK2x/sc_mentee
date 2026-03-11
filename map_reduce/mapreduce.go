@@ -142,19 +142,24 @@ func MergeN(channels [](<-chan Event)) <-chan Event {
 // MapReduce — точка входа.
 // Разбивает события на чанки, запускает воркеры и сливает результаты.
 func MapReduce(events []Event, numWorkers int) <-chan Event {
+	if len(events) == 0 {
+		ch := make(chan Event)
+		close(ch)
+		return ch
+	}
+
+	if numWorkers > len(events) {
+		numWorkers = len(events)
+	}
 	workersCh := make([]<-chan Event, numWorkers)
 
 	chankSize := len(events) / numWorkers
-	for i, cnt := 0, 0; cnt < numWorkers; i, cnt = i+chankSize, cnt+1 {
-		j := i + chankSize
-		if j > len(events) {
-			j = len(events)
-		}
-		if i > len(events) {
-			break
-		}
-
-		workersCh[cnt] = MapWorker(events[i:j])
+	mod := len(events) % numWorkers
+	lt := 0
+	rt := mod + chankSize
+	for i := 0; i < numWorkers; i++ {
+		workersCh[i] = MapWorker(events[lt:rt])
+		lt, rt = rt, rt+chankSize
 	}
 
 	return MergeN(workersCh)
