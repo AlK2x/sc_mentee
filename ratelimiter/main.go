@@ -54,9 +54,10 @@ func NewFixedWindow(limit int, window time.Duration) *FixedWindow {
 func (w *FixedWindow) Allow() bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if time.Since(w.windowStart) >= w.window {
+	now := time.Now()
+	if now.Sub(w.windowStart) >= w.window {
 		w.count = 0
-		w.windowStart = time.Now()
+		w.windowStart = now
 	}
 
 	if w.limit > w.count {
@@ -88,8 +89,7 @@ func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
 func (rl *RateLimiter) Allow(clientID string) bool {
 	fw, ok := rl.fixedWindows.Load(clientID)
 	if !ok {
-		fw = rl.createFixedWindow()
-		rl.fixedWindows.Store(clientID, fw)
+		fw, _ = rl.fixedWindows.LoadOrStore(clientID, rl.createFixedWindow())
 	}
 
 	return fw.(*FixedWindow).Allow()
